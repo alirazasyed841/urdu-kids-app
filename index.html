@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Urdu för barn – enkel webapp</title>
+<style>
+:root{--ink:#222;--panel:#fff;--accent:#ffd54f}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Arial,sans-serif;background:linear-gradient(#87ceeb,#fffacd);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.wrap{position:relative;width:420px;max-width:100%;padding:64px 0 24px}
+.topbar{position:absolute;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{background:var(--panel);border:2px solid var(--ink);border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
+button:active{transform:scale(.98)}
+.panel{position:relative;background:#fff;border:3px solid var(--ink);border-radius:12px;box-shadow:0 8px 18px rgba(0,0,0,.15);padding:18px}
+canvas{display:block;border:4px solid var(--ink);background:#fff;margin:10px auto}
+.row{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.big{font-size:72px}
+.urdu{font-size:46px;line-height:1.2;font-family:Georgia,"Times New Roman",serif}
+.metric{background:#fff;border:2px solid var(--ink);border-radius:12px;padding:10px 12px;min-width:110px;text-align:center}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px}
+.day{width:34px;height:34px;border:2px solid var(--ink);border-radius:8px;display:grid;place-items:center;background:#fff;font-size:12px}
+.hit{background:var(--accent)}
+#overlay{display:none;position:absolute;top:6px;left:50%;transform:translateX(-50%);background:#fff;border:3px solid #222;border-radius:10px;padding:8px 14px;font-weight:700}
+#homeScene .tiles{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#dailyWord{background:#fff;border:3px solid #222;border-radius:12px;padding:10px;margin:10px 0;box-shadow:0 3px 6px rgba(0,0,0,.15);text-align:center}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Top nav -->
+  <div class="topbar">
+    <button onclick="showHome()">Hem</button>
+    <button onclick="goPlay()">Spel</button>
+    <button onclick="startFlashcards()">Flashcards</button>
+    <button onclick="startQuiz()">Quiz</button>
+    <button onclick="openProgress()">Framsteg</button>
+  </div>
+
+  <!-- Home -->
+  <div id="homeScene" class="panel" style="text-align:center;">
+    <div id="currentAvatar" style="font-size:64px;margin-bottom:6px">🐭</div>
+    <h2 style="margin:6px 0 0">👋 Välkommen!</h2>
+    <p style="margin:6px 0 14px">Vad vill du göra idag?</p>
+    <div class="tiles">
+      <button onclick="goPlay()" style="font-size:18px;padding:18px">🎮 Spela</button>
+      <button onclick="startFlashcards()" style="font-size:18px;padding:18px">📚 Lära</button>
+      <button onclick="startQuiz()" style="font-size:18px;padding:18px">📝 Träna</button>
+      <button onclick="openProgress()" style="font-size:18px;padding:18px">📈 Framsteg</button>
+    </div>
+  </div>
+
+  <!-- Daily Word -->
+  <div id="dailyWord" class="">
+    <h3 style="margin:0 0 6px">📅 Dagens ord</h3>
+    <div id="dwImg" style="font-size:48px">🐱</div>
+    <div id="dwUrdu" class="urdu">بلی</div>
+    <div id="dwTranslit" style="font-size:20px">billi</div>
+    <div id="dwSwe" style="font-size:20px">katt</div>
+    <button onclick="playDailyWord()" style="margin-top:6px">▶️ Lyssna</button>
+  </div>
+
+  <!-- Game -->
+  <div id="gameScene" class="panel hidden">
+    <canvas id="game" width="400" height="400"></canvas>
+    <div id="overlay"></div>
+  </div>
+
+  <!-- Flashcards -->
+  <div id="flashcardScene" class="panel hidden">
+    <div class="row big" id="fcImage">🐱</div>
+    <div class="row urdu" id="fcUrdu">بلی</div>
+    <div class="row" id="fcTranslit" style="font-size:24px">billi</div>
+    <div class="row" id="fcSwe" style="font-size:24px">katt</div>
+    <div class="row" style="margin-top:10px">
+      <button onclick="playCardAudio()">🔊 Lyssna</button>
+      <button onclick="flipCard()">↩️ Visa mening</button>
+      <button onclick="favoriteWord()">⭐ Favorit</button>
+    </div>
+    <div id="fcSentence" class="row" style="display:none;margin-top:8px;font-size:18px;color:#444">
+      Detta är en katt. (Ye ek billi hai)
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button onclick="prevCard()">⬅️ Föregående</button>
+      <button onclick="nextCard()">➡️ Nästa</button>
+    </div>
+  </div>
+
+  <!-- Quiz -->
+  <div id="quizScene" class="panel hidden">
+    <h3 style="margin-top:0">📝 Quiz</h3>
+    <div id="quizQ" style="font-size:18px;margin:10px 0">Lyssna och välj rätt bild:</div>
+    <div id="quizChoices" class="row" style="gap:12px;flex-wrap:wrap"></div>
+    <div id="quizFeedback" class="row" style="margin-top:8px;font-size:18px;font-weight:700"></div>
+    <div class="row" style="margin-top:12px">
+      <button onclick="nextQuizQ()">Nästa</button>
+      <button onclick="closeQuiz()">Avbryt</button>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div id="progressScene" class="panel hidden">
+    <h3 style="margin:0 0 8px">📈 Framsteg</h3>
+    <div class="row" style="margin-bottom:10px">
+      <div class="metric"><div style="color:#555">XP</div><div id="mXP" style="font-size:22px;font-weight:800">0</div></div>
+      <div class="metric"><div style="color:#555">Streak</div><div id="mStreak" style="font-size:22px;font-weight:800">0 dagar</div></div>
+      <div class="metric"><div style="color:#555">Lärda ord</div><div id="mWords" style="font-size:22px;font-weight:800">0</div></div>
+    </div>
+    <h4 style="margin:8px 0 6px">🔥 Streak-kalender (senaste 14 dagar)</h4>
+    <div id="streakCal" class="calendar"></div>
+    <h4 style="margin:12px 0 6px">🏅 Medaljer</h4>
+    <div id="badges" class="row" style="flex-wrap:wrap"></div>
+    <div class="row" style="margin-top:12px">
+      <button onclick="closeProgress()">Stäng</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ===== Data & helpers ===== */
+const words = [
+  {id:"cat",   urdu:"بلی",  translit:"billi",  swe:"katt",  audio:"", img:"🐱", sentence:"Detta är en katt. (Ye ek billi hai)"},
+  {id:"dog",   urdu:"کتا",  translit:"kutta",  swe:"hund",  audio:"", img:"🐶", sentence:"Detta är en hund. (Ye ek kutta hai)"},
+  {id:"fish",  urdu:"مچھلی", translit:"machhli", swe:"fisk", audio:"", img:"🐟", sentence:"Detta är en fisk. (Ye ek machhli hai)"},
+  {id:"apple", urdu:"سیب",  translit:"saib",   swe:"äpple", audio:"", img:"🍎", sentence:"Jag äter ett äpple. (Main ek saib kha raha hoon)"},
+  {id:"bread", urdu:"روٹی", translit:"roti",   swe:"bröd",  audio:"", img:"🍞", sentence:"Jag bakar bröd. (Main roti banata hoon)"}
+];
+const LS={xp:"xp",streak:"streak",last:"lastActive",words:"wordsLearned",badges:"badges"};
+function readInt(k,d=0){const v=parseInt(localStorage.getItem(k));return Number.isFinite(v)?v:d}
+function writeInt(k,v){localStorage.setItem(k,String(v))}
+function todayISO(){const d=new Date();return d.toISOString().slice(0,10)}
+function bumpStreak(){const t=todayISO();const last=localStorage.getItem(LS.last);if(last===t)return;const y=new Date();const yd=new Date(y.getFullYear(),y.getMonth(),y.getDate()-1).toISOString().slice(0,10);let s=readInt(LS.streak,0);s=(last===yd)?s+1:1;writeInt(LS.streak,s);localStorage.setItem(LS.last,t)}
+
+/* ===== Scenes ===== */
+function show(el){el.classList.remove("hidden")}
+function hide(el){el.classList.add("hidden")}
+function showHome(){ hide(document.getElementById("gameScene")); hide(document.getElementById("flashcardScene")); hide(document.getElementById("quizScene")); hide(document.getElementById("progressScene")); show(document.getElementById("homeScene")) }
+function goPlay(){ hide(document.getElementById("homeScene")); show(document.getElementById("gameScene")); initGame() }
+function startFlashcards(){ hide(document.getElementById("homeScene")); hide(document.getElementById("gameScene")); hide(document.getElementById("quizScene")); show(document.getElementById("flashcardScene")); showCard() }
+function startQuiz(){ hide(document.getElementById("homeScene")); hide(document.getElementById("gameScene")); hide(document.getElementById("flashcardScene")); show(document.getElementById("quizScene")); startQuizRound() }
+function openProgress(){ hide(document.getElementById("homeScene")); hide(document.getElementById("gameScene")); hide(document.getElementById("flashcardScene")); hide(document.getElementById("quizScene")); show(document.getElementById("progressScene")); renderProgress() }
+function closeProgress(){ showHome() }
+
+/* ===== Daily Word ===== */
+let daily = null, dailyXP = false;
+function pickDaily(){const t=todayISO();const saved=localStorage.getItem("DW_DAY");if(saved===t){daily=JSON.parse(localStorage.getItem("DW_VAL")); if(daily){renderDaily(daily);return;}}
+daily=words[Math.floor(Math.random()*words.length)]; localStorage.setItem("DW_DAY",t); localStorage.setItem("DW_VAL",JSON.stringify(daily)); dailyXP=false; renderDaily(daily)}
+function renderDaily(w){document.getElementById("dwImg").textContent=w.img;document.getElementById("dwUrdu").textContent=w.urdu;document.getElementById("dwTranslit").textContent=w.translit;document.getElementById("dwSwe").textContent=w.swe;}
+function playDailyWord(){ if(!dailyXP){ writeInt(LS.xp, readInt(LS.xp,0)+3 ); bumpStreak(); dailyXP=true; } }
+
+/* ===== Game (snake-lite) ===== */
+const canvas=document.getElementById("game"); const ctx=canvas.getContext("2d"); const box=20;
+let snake=[],dir=null,cheese=null,lastMove=0,intervalMs=220,rafId=null;
+document.addEventListener("keydown",e=>{const k=e.key;if((k==="ArrowLeft"||k==="a")&&dir!=="RIGHT")dir="LEFT";else if((k==="ArrowUp"||k==="w")&&dir!=="DOWN")dir="UP";else if((k==="ArrowRight"||k==="d")&&dir!=="LEFT")dir="RIGHT";else if((k==="ArrowDown"||k==="s")&&dir!=="UP")dir="DOWN"});
+function initGame(){ snake=[{x:9*box,y:10*box}]; dir=null; cheese=randCheese(); if(rafId) cancelAnimationFrame(rafId); rafId=requestAnimationFrame(loop) }
+function randCheese(){ return {x:Math.floor(Math.random()*20)*box, y:Math.floor(Math.random()*20)*box} }
+function loop(ts){ drawFrame(); if(ts-lastMove>=intervalMs){ lastMove=ts; step(); } rafId=requestAnimationFrame(loop) }
+function drawFrame(){ ctx.fillStyle="#fff"; ctx.fillRect(0,0,400,400); for(let i=0;i<snake.length;i++){ ctx.fillStyle=i===0?"#2e7d32":"#a5d6a7"; ctx.fillRect(snake[i].x,snake[i].y,box,box); ctx.strokeRect(snake[i].x,snake[i].y,box,box);} ctx.fillStyle="#ffd54f"; ctx.fillRect(cheese.x,cheese.y,box,box); }
+function step(){ let x=snake[0].x,y=snake[0].y; if(dir==="LEFT")x-=box; if(dir==="UP")y-=box; if(dir==="RIGHT")x+=box; if(dir==="DOWN")y+=box;
+  if(x===cheese.x&&y===cheese.y){ showWordOverlay(); writeInt(LS.xp, readInt(LS.xp,0)+5 ); bumpStreak(); intervalMs=Math.max(120,intervalMs-10); cheese=randCheese(); } else { snake.pop(); }
+  snake.unshift({x,y}); if(x<0||y<0||x>=400||y>=400){ alert("Game Over"); showHome(); } }
+function showWordOverlay(){ const w=words[Math.floor(Math.random()*words.length)]; const o=document.getElementById("overlay"); o.innerHTML=`<span class="urdu">${w.urdu}</span> ${w.translit} – ${w.swe}`; o.style.display="block"; setTimeout(()=>o.style.display="none",1500); }
+
+/* ===== Flashcards ===== */
+let idx=0;
+function showCard(){ const c=words[idx]; document.getElementById("fcImage").textContent=c.img; document.getElementById("fcUrdu").textContent=c.urdu; document.getElementById("fcTranslit").textContent=c.translit; document.getElementById("fcSwe").textContent=c.swe; document.getElementById("fcSentence").style.display="none"; }
+function playCardAudio(){ /* add audio files later if you want */ }
+function flipCard(){ const c=words[idx]; const s=document.getElementById("fcSentence"); s.textContent=c.sentence||"—"; s.style.display="block"; }
+function favoriteWord(){ alert("Sparad som favorit."); }
+function prevCard(){ idx=(idx+words.length-1)%words.length; showCard(); }
+function nextCard(){ idx=(idx+1)%words.length; writeInt(LS.words, readInt(LS.words,0)+1 ); writeInt(LS.xp, readInt(LS.xp,0)+3 ); bumpStreak(); showCard(); }
+
+/* ===== Quiz ===== */
+let quiz=[],qi=0,correct=0;
+function startQuizRound(){ quiz=[]; correct=0; const pool=[...words]; while(pool.length&&quiz.length<5){ const i=Math.floor(Math.random()*pool.length); quiz.push(pool.splice(i,1)[0]); } qi=0; showQuizQ(); }
+function showQuizQ(){ const q=quiz[qi]; document.getElementById("quizQ").textContent="Lyssna och välj rätt bild:"; const box=document.getElementById("quizChoices"); box.innerHTML=""; const opts=[q, ...words.filter(w=>w!==q).sort(()=>0.5-Math.random()).slice(0,3)].sort(()=>0.5-Math.random());
+  opts.forEach(o=>{ const b=document.createElement("button"); b.textContent=o.img; b.style.fontSize="48px"; b.onclick=()=>checkQuiz(o.id===q.id); box.appendChild(b); }); }
+function checkQuiz(ok){ const fb=document.getElementById("quizFeedback"); if(ok){ fb.textContent="✅ Rätt!"; correct++; writeInt(LS.xp, readInt(LS.xp,0)+5 ); writeInt(LS.words, readInt(LS.words,0)+1 ); bumpStreak(); } else { fb.textContent="❌ Fel"; } }
+function nextQuizQ(){ document.getElementById("quizFeedback").textContent=""; qi++; if(qi>=quiz.length){ alert(`Klart! Du hade ${correct} av ${quiz.length} rätt.`); closeQuiz(); } else showQuizQ(); }
+function closeQuiz(){ showHome() }
+
+/* ===== Progress ===== */
+function renderProgress(){
+  document.getElementById("mXP").textContent=String(readInt(LS.xp,0));
+  document.getElementById("mStreak").textContent=`${readInt(LS.streak,0)} dagar`;
+  document.getElementById("mWords").textContent=String(readInt(LS.words,0));
+  const cal=document.getElementById("streakCal"); cal.innerHTML=""; const last=localStorage.getItem(LS.last); const today=new Date();
+  for(let i=13;i>=0;i--){ const d=new Date(today.getFullYear(),today.getMonth(),today.getDate()-i); const iso=d.toISOString().slice(0,10); const cell=document.createElement("div"); cell.className="day"+(iso===last?" hit":""); cell.textContent=d.getDate(); cal.appendChild(cell); }
+  const badges=document.getElementById("badges"); badges.innerHTML=""; if(readInt(LS.words,0)>0){ badges.innerHTML+='<div>🎉 Första lärda ordet</div>'; }
+}
+
+/* ===== Boot ===== */
+window.addEventListener("load",()=>{ pickDaily(); showHome(); });
+</script>
+</body>
+</html>
